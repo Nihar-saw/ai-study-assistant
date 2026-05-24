@@ -114,7 +114,7 @@ const Notes = () => {
           />
         </div>
 
-        <div className="flex-grow:1 overflow-y-auto pr-2 space-y-2 custom-scrollbar">
+        <div className="flexgrow:1 overflow-y-auto pr-2 space-y-2 custom-scrollbar">
           {filteredNotes.map((note) => (
             <div 
               key={note._id}
@@ -155,17 +155,17 @@ const Notes = () => {
       </div>
 
       {/* Editor Area */}
-      <div className="flex-grow notion-card rounded-3xl overflow-hidden flex flex-col">
+      <div className="flexgrow notion-card rounded-3xl overflow-hidden flex flex-col">
         {!selectedNote ? (
-          <div className="flex-grow flex flex-col items-center justify-center text-center opacity-30">
+          <div className="flexgrow flex flex-col items-center justify-center text-center opacity-30">
              <StickyNote size={64} className="mb-4" />
              <h2 className="text-xl font-bold">Select a note to read</h2>
              <p className="text-sm">Or create a new one to start writing.</p>
           </div>
         ) : (
-          <div className="flex flex-col h-full animate-in">
+          <div className="flexgrow flex flex-col h-full animate-in">
             <header className="px-8 py-4 border-b border-gray-50 flex items-center justify-between">
-              <div className="flex-grow">
+              <div className="flexgrow">
                 <input 
                   type="text"
                   value={title}
@@ -179,7 +179,7 @@ const Notes = () => {
                     <select 
                       value={linkedPdfId} 
                       onChange={(e) => setLinkedPdfId(e.target.value)}
-                      className="text-xs font-medium text-gray-600 bg-transparent outline-none flex-grow w-full cursor-pointer truncate"
+                      className="text-xs font-medium text-gray-600 bg-transparent outline-none flexgrow w-full cursor-pointer truncate"
                     >
                       <option value="">No related document</option>
                       {pdfs.map(pdf => (
@@ -205,7 +205,7 @@ const Notes = () => {
                 Save Note
               </button>
             </header>
-            <div className="flex-grow overflow-hidden relative">
+            <div className="flexgrow overflow-hidden relative">
               <ReactQuill 
                 theme="snow" 
                 value={content || ""} 
