@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { RotateCcw } from "lucide-react";
 
-function FlashcardList({ flashcards }) {
+function FlashcardList({ flashcards, onRefresh }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
 
@@ -17,9 +18,20 @@ function FlashcardList({ flashcards }) {
   };
 
   return (
-    <div className="flex flex-col items-center gap-8 py-10 h-full">
-      <div className="text-sm font-bold text-gray-400 uppercase tracking-widest">
-        Card {currentIndex + 1} of {flashcards.length}
+    <div className="flex flex-col items-center gap-8 py-10 h-full w-full">
+      <div className="w-full max-w-lg flex justify-between items-center px-4">
+        <span className="text-sm font-bold text-gray-400 uppercase tracking-widest">
+          Card {currentIndex + 1} of {flashcards.length}
+        </span>
+        {onRefresh && (
+          <button 
+            onClick={onRefresh}
+            className="text-gray-400 hover:text-indigo-600 transition-colors cursor-pointer"
+            title="Regenerate Flashcards"
+          >
+            <RotateCcw size={18} />
+          </button>
+        )}
       </div>
 
       <div 

@@ -27,7 +27,7 @@ const Quiz = () => {
     fetchPDFs();
   }, [fetchPDFs]);
 
-  const generateQuiz = async (id) => {
+  const generateQuiz = async (id, refresh = false) => {
     setSelectedPdfId(id);
     setLoading(true);
     setCurrentIndex(0);
@@ -35,8 +35,12 @@ const Quiz = () => {
     setSelectedOption(null);
     setShowResult(false);
     try {
-      const { data } = await API.get(`/quiz/${id}`);
+      const url = refresh ? `/quiz/${id}?refresh=true` : `/quiz/${id}`;
+      const { data } = await API.get(url);
       setQuiz(data);
+      if (refresh) {
+        toast.success("Generated 10 completely new quiz questions!");
+      }
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to generate quiz");
     } finally {
@@ -121,8 +125,8 @@ const Quiz = () => {
               </div>
               <div className="flex gap-4 justify-center">
                 <button 
-                  onClick={() => generateQuiz(selectedPdfId)}
-                  className="btn-primary"
+                  onClick={() => generateQuiz(selectedPdfId, true)}
+                  className="btn-primary cursor-pointer"
                 >
                   <RotateCcw size={18} />
                   Retry Quiz

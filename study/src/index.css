@@ -1,6 +1,64 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
+@theme {
+  --color-on-secondary-fixed: #23005c;
+  --color-surface-container-high: #e1e8fd;
+  --color-on-tertiary: #ffffff;
+  --color-on-primary-fixed-variant: #003cad;
+  --color-on-primary-fixed: #00164d;
+  --color-on-secondary-container: #fffbff;
+  --color-surface-container: #e9edff;
+  --color-on-primary-container: #fffbff;
+  --color-primary-fixed: #dce1ff;
+  --color-outline-variant: #c3c5d7;
+  --color-on-surface-variant: #434654;
+  --color-tertiary-container: #008376;
+  --color-surface-container-low: #f1f3ff;
+  --color-on-tertiary-fixed: #00201c;
+  --color-on-secondary-fixed-variant: #5516be;
+  --color-surface-bright: #f9f9ff;
+  --color-error-container: #ffdad6;
+  --color-inverse-surface: #293040;
+  --color-on-error-container: #93000a;
+  --color-inverse-primary: #b5c4ff;
+  --color-primary-fixed-dim: #b5c4ff;
+  --color-on-tertiary-fixed-variant: #005048;
+  --color-surface: #f9f9ff;
+  --color-surface-container-lowest: #ffffff;
+  --color-secondary: #6b38d4;
+  --color-surface-dim: #d3daef;
+  --color-secondary-fixed: #e9ddff;
+  --color-inverse-on-surface: #edf0ff;
+  --color-tertiary-fixed-dim: #4fdbc8;
+  --color-surface-tint: #1a53d6;
+  --color-tertiary-fixed: #71f8e4;
+  --color-surface-variant: #dce2f7;
+  --color-primary: #1550d3;
+  --color-primary-container: #3c6bed;
+  --color-on-surface: #141b2b;
+  --color-on-error: #ffffff;
+  --color-secondary-fixed-dim: #d0bcff;
+  --color-on-primary: #ffffff;
+  --color-secondary-container: #8455ef;
+  --color-on-secondary: #ffffff;
+  --color-surface-container-highest: #dce2f7;
+  --color-on-background: #141b2b;
+  --color-on-tertiary-container: #f4fffb;
+  --color-error: #ba1a1a;
+  --color-outline: #737686;
+  --color-tertiary: #00685d;
+  --color-background: #f9f9ff;
+
+  --spacing-stack-sm: 8px;
+  --spacing-container-padding: 32px;
+  --spacing-stack-lg: 24px;
+  --spacing-unit: 4px;
+  --spacing-gutter: 24px;
+  --spacing-section-gap: 64px;
+  --spacing-stack-md: 16px;
+}
+
 :root {
   font-family: 'Inter', sans-serif;
 }
@@ -8,73 +66,165 @@
 body {
   margin: 0;
   padding: 0;
-  background-color: #f7f8fb;
-  color: #111827;
+  background-color: #f9f9ff;
+  color: #141b2b;
 }
 
+/* Custom design system typography utilities for exact styling match */
+@utility font-label-sm { font-family: 'Inter', sans-serif; }
+@utility font-headline-md { font-family: 'Inter', sans-serif; }
+@utility font-headline-lg { font-family: 'Inter', sans-serif; }
+@utility font-body-lg { font-family: 'Inter', sans-serif; }
+@utility font-label-md { font-family: 'Inter', sans-serif; }
+@utility font-headline-lg-mobile { font-family: 'Inter', sans-serif; }
+@utility font-display-lg { font-family: 'Inter', sans-serif; }
+@utility font-body-md { font-family: 'Inter', sans-serif; }
+
+@utility text-label-sm { font-size: 12px; line-height: 16px; font-weight: 600; }
+@utility text-headline-md { font-size: 24px; line-height: 32px; font-weight: 600; }
+@utility text-headline-lg { font-size: 32px; line-height: 40px; letter-spacing: -0.01em; font-weight: 600; }
+@utility text-body-lg { font-size: 18px; line-height: 28px; font-weight: 400; }
+@utility text-label-md { font-size: 14px; line-height: 20px; letter-spacing: 0.01em; font-weight: 500; }
+@utility text-headline-lg-mobile { font-size: 24px; line-height: 32px; letter-spacing: -0.01em; font-weight: 600; }
+@utility text-display-lg { font-size: 48px; line-height: 56px; letter-spacing: -0.02em; font-weight: 700; }
+@utility text-body-md { font-size: 16px; line-height: 24px; font-weight: 400; }
+
+/* Custom Claymorphic Design Rules */
+.clay-card {
+  background: #ffffff;
+  border-radius: 32px;
+  box-shadow: 
+    0 20px 40px rgba(0, 0, 0, 0.04),
+    inset 4px 4px 8px rgba(255, 255, 255, 0.8),
+    inset -4px -4px 8px rgba(200, 210, 240, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.clay-button {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 
+    0 4px 12px rgba(21, 80, 211, 0.2),
+    inset 0 2px 4px rgba(255, 255, 255, 0.3);
+}
+
+.clay-button:active {
+  transform: scale(0.96);
+  box-shadow: 
+    0 2px 4px rgba(21, 80, 211, 0.1),
+    inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.clay-input {
+  background: #f1f3ff;
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+  box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.clay-input:focus {
+  background: #ffffff;
+  border-color: #3c6bed;
+  box-shadow: 0 0 0 4px rgba(60, 107, 237, 0.1);
+  outline: none;
+}
+
+.social-btn {
+  background: #ffffff;
+  border: 1px solid #e9edff;
+  transition: all 0.2s ease;
+}
+
+.social-btn:hover {
+  background: #f1f3ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.dot-pattern {
+  background-image: radial-gradient(#dce2f7 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.clay-button-primary {
+  background: #1550d3;
+  color: #ffffff;
+  box-shadow: 0 10px 20px rgba(21, 80, 211, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+  border-radius: 100px;
+  transition: all 0.2s ease;
+}
+
+.clay-button-primary:active {
+  transform: scale(0.95);
+  box-shadow: 0 4px 8px rgba(21, 80, 211, 0.15);
+}
+
+.glass-header {
+  background: rgba(249, 249, 255, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.hero-gradient {
+  background: radial-gradient(circle at 50% 50%, rgba(60, 107, 237, 0.08) 0%, transparent 70%);
+}
+
+.scroll-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.progress-ring-circle {
+  transition: stroke-dashoffset 0.35s;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
+
+/* Backward compatibility classes to keep other components aligned */
 .notion-card {
-  @apply bg-white border border-gray-200 rounded-lg transition-all duration-200;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.02), 0 4px 12px rgba(0,0,0,0.03);
+  @apply bg-white border border-slate-100 rounded-2xl transition-all duration-300;
+  box-shadow: 0 4px 20px -2px rgba(0,0,0,0.01), 0 8px 16px -4px rgba(0,0,0,0.02);
 }
-
 .notion-card:hover {
-  @apply border-gray-200;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.02), 0 8px 16px rgba(0,0,0,0.04);
+  @apply border-indigo-100/50 -translate-y-0.5;
+  box-shadow: 0 8px 24px -4px rgba(99, 102, 241, 0.06), 0 12px 32px -4px rgba(0,0,0,0.02);
 }
 
 .sidebar-item {
-  @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-colors font-medium;
+  @apply flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all font-semibold text-sm;
 }
-
 .sidebar-item.active {
-  @apply bg-blue-600 text-white shadow-sm shadow-blue-100 hover:bg-blue-600 hover:text-white;
+  @apply bg-indigo-50 text-indigo-700 shadow-sm hover:bg-indigo-50 hover:text-indigo-700;
 }
 
 .btn-primary {
-  @apply bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors inline-flex items-center gap-2;
+  @apply bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 inline-flex items-center gap-2 shadow-md shadow-indigo-600/10 cursor-pointer hover:shadow-lg active:scale-[0.98];
 }
 
 .input-field {
-  @apply w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg outline-none focus:bg-white focus:border-indigo-500 transition-all;
+  @apply w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:bg-white focus:border-indigo-500 transition-all text-sm font-medium;
 }
 
 .dash-card {
-  @apply rounded-lg border border-gray-200 bg-white p-5 shadow-sm;
+  @apply rounded-2xl border border-slate-100 bg-white p-6 transition-all duration-300;
+  box-shadow: 0 4px 20px -2px rgba(0,0,0,0.01), 0 8px 16px -4px rgba(0,0,0,0.02);
+}
+.dash-card:hover {
+  border-color: rgba(99, 102, 241, 0.15);
+  box-shadow: 0 8px 24px -2px rgba(0,0,0,0.02), 0 16px 32px -4px rgba(79, 70, 229, 0.05);
 }
 
 .toolbar-button {
-  @apply inline-flex h-10 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-600 hover:bg-gray-50;
+  @apply inline-flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors shadow-sm cursor-pointer;
 }
 
 .icon-pill {
-  @apply inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600;
+  @apply inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-100 bg-white text-slate-400 hover:border-indigo-200 hover:bg-indigo-50/50 hover:text-indigo-600 transition-all;
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: #e2e8f0;
-  border-radius: 10px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #cbd5e1;
-}
-
-/* Animations */
-.perspective-1000 {
-  perspective: 1000px;
-}
-.transform-style-3d {
-  transform-style: preserve-3d;
-}
-.backface-hidden {
-  backface-visibility: hidden;
-}
-.rotate-y-180 {
-  transform: rotateY(180deg);
+.glass-panel {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.04);
 }

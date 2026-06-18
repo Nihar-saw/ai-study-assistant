@@ -9,7 +9,8 @@ import {
   MessageSquare, 
   Link as LinkIcon,
   Copy,
-  Tags
+  Tags,
+  GitFork
 } from "lucide-react";
 import API from "../api/axios";
 import toast from "react-hot-toast";
@@ -18,6 +19,7 @@ import FlashcardList from "../components/study/FlashcardList";
 import QuizList from "../components/study/QuizList";
 import ChatBox from "../components/study/ChatBox";
 import ResourceList from "../components/study/ResourceList";
+import MindMapBox from "../components/study/MindMapBox";
 
 const StudyView = () => {
   const { id } = useParams();
@@ -39,17 +41,13 @@ const StudyView = () => {
           return;
         }
 
-        if (!found.description && !found.keyTopics?.length) {
-          try {
-            const { data: identifiedPdf } = await API.post(`/pdf/${id}/identify`);
-            setPdf(identifiedPdf);
-          } catch {
-            setPdf(found);
-          }
-          return;
-        }
-
         setPdf(found);
+
+        if (!found.description && !found.keyTopics?.length) {
+          API.post(`/pdf/${id}/identify`)
+            .then(({ data: identifiedPdf }) => setPdf(identifiedPdf))
+            .catch(() => {});
+        }
       } catch {
         toast.error("Failed to fetch document");
       }
@@ -59,7 +57,7 @@ const StudyView = () => {
 
   useEffect(() => {
     const loadData = async (tab) => {
-      if (tab === "chat") return;
+      if (tab === "chat" || tab === "mindmap") return;
       
       if (cachedData.current[tab]) {
         setContent(cachedData.current[tab]);
@@ -89,6 +87,35 @@ const StudyView = () => {
     if (pdf) loadData(activeTab);
   }, [pdf, activeTab, id]);
 
+  const handleRefreshQuiz = async () => {
+    setLoading(true);
+    setContent(null);
+    try {
+      const { data } = await API.get(`/quiz/${id}?refresh=true`);
+      setContent(data);
+      cachedData.current["quiz"] = data;
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to generate new quiz");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRefreshFlashcards = async () => {
+    setLoading(true);
+    setContent(null);
+    try {
+      const { data } = await API.get(`/flashcards/${id}?refresh=true`);
+      setContent(data);
+      cachedData.current["flashcards"] = data;
+      toast.success("Regenerated 10 completely new flashcards!");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to generate new flashcards");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!pdf) return (
     <div className="flex items-center justify-center h-full">
       <div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
@@ -99,6 +126,7 @@ const StudyView = () => {
     { id: "summary", label: "Summary", icon: Sparkles },
     { id: "flashcards", label: "Flashcards", icon: BookOpen },
     { id: "quiz", label: "Quiz", icon: BrainCircuit },
+    { id: "mindmap", label: "Mind Map", icon: GitFork },
     { id: "chat", label: "AI Chat", icon: MessageSquare },
     { id: "resources", label: "Resources", icon: LinkIcon },
   ];
@@ -193,10 +221,12 @@ const StudyView = () => {
                     </div>
                   </div>
                 )}
-                {activeTab === "flashcards" && <FlashcardList flashcards={content} />}
-                {activeTab === "quiz" && <QuizList quiz={content} />}
+                {activeTab === "flashcards" && <FlashcardList flashcards={content} onRefresh={handleRefreshFlashcards} />}
+                {activeTab === "quiz" && <QuizList quiz={content} onRefresh={handleRefreshQuiz} />}
                 {activeTab === "resources" && <ResourceList resources={content} />}
               </div>
+            ) : activeTab === "mindmap" ? (
+              <MindMapBox pdfId={id} />
             ) : null}
           </motion.div>
         </AnimatePresence>

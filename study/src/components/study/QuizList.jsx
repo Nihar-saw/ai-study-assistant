@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-function QuizList({ quiz }) {
+function QuizList({ quiz, onRefresh }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState(null);
   const [showResult, setShowResult] = useState(false);
@@ -35,17 +35,19 @@ function QuizList({ quiz }) {
         </div>
         <h2 className="text-3xl font-bold text-gray-900">Quiz Completed!</h2>
         <p className="text-gray-500 mt-2 text-xl">Your score: <span className="font-bold text-indigo-600">{score} / {quiz.length}</span></p>
-        <button 
-          onClick={() => {
-            setCurrentIndex(0);
-            setScore(0);
-            setSelectedOption(null);
-            setShowResult(false);
-          }}
-          className="btn-primary mt-10 px-8 py-3 rounded-2xl text-white font-bold"
-        >
-          Restart Quiz
-        </button>
+        <div className="flex justify-center mt-10">
+          <button 
+            onClick={onRefresh || (() => {
+              setCurrentIndex(0);
+              setScore(0);
+              setSelectedOption(null);
+              setShowResult(false);
+            })}
+            className="btn-primary px-8 py-3 rounded-2xl text-white font-bold"
+          >
+            Retake Quiz
+          </button>
+        </div>
       </div>
     );
   }
@@ -55,7 +57,17 @@ function QuizList({ quiz }) {
   return (
     <div className="max-w-2xl mx-auto py-6 flex flex-col h-full">
       <div className="flex justify-between items-center mb-10">
-        <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Question {currentIndex + 1} of {quiz.length}</span>
+        <div className="flex flex-col">
+          <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Question {currentIndex + 1} of {quiz.length}</span>
+          {onRefresh && (
+            <button 
+              onClick={onRefresh}
+              className="text-xs text-indigo-600 hover:text-indigo-800 transition-colors font-semibold text-left mt-1"
+            >
+              Generate New Quiz
+            </button>
+          )}
+        </div>
         <div className="flex gap-1">
            {quiz.map((_, i) => (
              <div key={i} className={`w-2 h-2 rounded-full transition-colors ${i === currentIndex ? 'bg-indigo-600' : i < currentIndex ? 'bg-indigo-200' : 'bg-gray-100'}`}></div>

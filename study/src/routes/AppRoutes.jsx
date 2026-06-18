@@ -13,6 +13,11 @@ import Chat from "../pages/Chat";
 import Notes from "../pages/Notes";
 import StudyView from "../pages/StudyView";
 import Resources from "../pages/Resources";
+import RoadmapPage from "../pages/RoadmapPage";
+import StudyPlannerPage from "../pages/StudyPlannerPage";
+import ExamPrepPage from "../pages/ExamPrepPage";
+import WeaknessAnalyticsPage from "../pages/WeaknessAnalyticsPage";
+import RevisionPage from "../pages/RevisionPage";
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -43,6 +48,11 @@ function AppRoutes() {
         <Route path="notes" element={<Notes />} />
         <Route path="resources" element={<Resources />} />
         <Route path="study/:id" element={<StudyView />} />
+        <Route path="roadmap" element={<RoadmapPage />} />
+        <Route path="planner" element={<StudyPlannerPage />} />
+        <Route path="exam-prep" element={<ExamPrepPage />} />
+        <Route path="analytics" element={<WeaknessAnalyticsPage />} />
+        <Route path="revision" element={<RevisionPage />} />
       </Route>
     </Routes>
   );

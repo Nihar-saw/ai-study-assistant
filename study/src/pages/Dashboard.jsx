@@ -1,398 +1,352 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import {
-  ArrowUpDown,
-  BookOpen,
-  BrainCircuit,
-  Check,
-  Download,
-  FileText,
-  Filter,
-  MessageSquare,
-  Search,
-  Sparkles,
-  Upload,
-} from "lucide-react";
-import { useStudy } from "../context/StudyContext";
+import API from "../api/axios";
 import toast from "react-hot-toast";
-
-const tabs = ["Productivity", "Documents", "AI Reports", "Study Queue"];
-
-const subjectFallbacks = ["AI", "Math", "Science", "Research", "General"];
-
-const getSubject = (pdf, index) => pdf.subject || subjectFallbacks[index % subjectFallbacks.length];
-
-const formatDate = (value) => {
-  if (!value) return "Unknown";
-  return new Date(value).toLocaleDateString(undefined, { month: "short", day: "2-digit", year: "numeric" });
-};
-
-const MetricCard = ({ label, value, detail, trend, tone = "blue" }) => {
-  const tones = {
-    blue: "bg-blue-500",
-    teal: "bg-teal-500",
-    amber: "bg-amber-400",
-    rose: "bg-rose-500",
-  };
-
-  return (
-    <div className="dash-card min-h 132px">
-      <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-        <span className={`h-2 w-2 rounded-full ${tones[tone]}`} />
-        {label}
-      </div>
-      <div className="mt-5 text-3xl font-semibold tracking-tight text-gray-950">{value}</div>
-      <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs">
-        <span className="text-gray-500">{detail}</span>
-        <span className={trend.startsWith("+") ? "text-teal-600" : "text-rose-500"}>{trend}</span>
-      </div>
-    </div>
-  );
-};
-
-const EmptyState = () => (
-  <div className="dash-card flex min-h-220px flex-col items-center justify-center text-center">
-    <FileText className="mb-4 text-gray-300" size={42} />
-    <h3 className="text-base font-semibold text-gray-900">No study documents yet</h3>
-    <p className="mt-1 max-w-sm text-sm text-gray-500">Upload a text-based PDF and the local model will identify it, summarize it, and unlock the study tools.</p>
-    <Link to="/pdf" className="btn-primary mt-5">
-      <Upload size={16} />
-      Upload PDF
-    </Link>
-  </div>
-);
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { pdfs, notes, fetchPDFs, fetchNotes } = useStudy();
-  const [activeTab, setActiveTab] = useState("Productivity");
-  const [query, setQuery] = useState("");
-  const [subjectFilter, setSubjectFilter] = useState("All");
-  const [sortKey, setSortKey] = useState("recent");
-  const [selectedIds, setSelectedIds] = useState([]);
+  const [profile, setProfile] = useState(null);
+  const [pdfs, setPdfs] = useState([]);
+  const [plan, setPlan] = useState(null);
+  const [weakness, setWeakness] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchData = async () => {
+    try {
+      const profileRes = await API.get("/auth/profile");
+      setProfile(profileRes.data);
+
+      const pdfsRes = await API.get("/pdf");
+      setPdfs(pdfsRes.data);
+
+      try {
+        const planRes = await API.get("/planner");
+        setPlan(planRes.data);
+      } catch (err) {
+        console.log("No plan found");
+      }
+
+      try {
+        const weaknessRes = await API.get("/weakness");
+        setWeakness(weaknessRes.data);
+      } catch (err) {
+        console.log("No weakness reports found");
+      }
+    } catch (error) {
+      toast.error("Failed to load dashboard metrics");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    fetchPDFs();
-    fetchNotes();
-  }, [fetchPDFs, fetchNotes]);
+    fetchData();
+  }, []);
 
-  const subjects = useMemo(() => {
-    const values = pdfs.map((pdf, index) => getSubject(pdf, index));
-    return ["All", ...Array.from(new Set(values))];
-  }, [pdfs]);
+  const totalXP = profile?.xp || 0;
+  const level = profile?.level || 1;
+  const nextLevelXP = level * 100;
+  const prevLevelXP = (level - 1) * 100;
+  const levelProgress = Math.max(0, Math.min(100, ((totalXP - prevLevelXP) / (nextLevelXP - prevLevelXP)) * 100));
 
-  const filteredPDFs = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-    const rows = pdfs.filter((pdf, index) => {
-      const subject = getSubject(pdf, index);
-      const matchesSubject = subjectFilter === "All" || subject === subjectFilter;
-      const searchable = [pdf.title, pdf.detectedTitle, pdf.description, subject, ...(pdf.keyTopics || [])]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      return matchesSubject && searchable.includes(normalizedQuery);
+  // Streak details
+  const streak = profile?.streak || 0;
+
+  // Filter tasks for Day 1 or today's tasks
+  const todayTasks = useMemo(() => {
+    if (!plan || !plan.planData?.dailyPlan) return [];
+    
+    // Find uncompleted tasks from dailyPlan
+    return plan.planData.dailyPlan.slice(0, 3).map((item) => {
+      const taskKey = `Day ${item.day} - ${item.subject} - ${item.topic}`;
+      const completed = plan.completedTasks?.includes(taskKey) || false;
+      return { ...item, taskKey, completed };
     });
+  }, [plan]);
 
-    return [...rows].sort((a, b) => {
-      if (sortKey === "title") return (a.detectedTitle || a.title).localeCompare(b.detectedTitle || b.title);
-      if (sortKey === "subject") return (a.subject || "").localeCompare(b.subject || "");
-      return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
-    });
-  }, [pdfs, query, sortKey, subjectFilter]);
-
-  const subjectCounts = useMemo(() => {
-    const counts = {};
-    pdfs.forEach((pdf, index) => {
-      const subject = getSubject(pdf, index);
-      counts[subject] = (counts[subject] || 0) + 1;
-    });
-    return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 4);
-  }, [pdfs]);
-
-  const chartData = useMemo(() => {
-    const data = [];
-    const today = new Date();
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(today.getDate() - i);
-      const dayStr = date.toLocaleDateString("en-US", { weekday: "short" });
-      
-      let count = 0;
-      pdfs.forEach(pdf => {
-        if (!pdf.createdAt) return;
-        const d = new Date(pdf.createdAt);
-        if (d.getDate() === date.getDate() && d.getMonth() === date.getMonth() && d.getFullYear() === date.getFullYear()) count += 2;
-      });
-      notes.forEach(note => {
-        if (!note.createdAt && !note.updatedAt) return;
-        const d = new Date(note.createdAt || note.updatedAt);
-        if (d.getDate() === date.getDate() && d.getMonth() === date.getMonth() && d.getFullYear() === date.getFullYear()) count += 1;
-      });
-      
-      data.push({ day: dayStr, value: count });
+  const handleToggleTask = async (taskKey) => {
+    try {
+      const { data } = await API.post("/planner/toggle-task", { taskKey });
+      setPlan(data.plan);
+      if (data.gamification) {
+        toast.success("Task completed! +20 XP");
+        // Reload profile stats
+        const profileRes = await API.get("/auth/profile");
+        setProfile(profileRes.data);
+      } else {
+        toast.success("Task updated");
+      }
+    } catch {
+      toast.error("Failed to update task");
     }
-    return data;
-  }, [pdfs, notes]);
-
-  const totalTopics = pdfs.reduce((sum, pdf) => sum + (pdf.keyTopics?.length || 0), 0);
-  const selectedRows = filteredPDFs.filter((pdf) => selectedIds.includes(pdf._id));
-  const maxChart = Math.max(...chartData.map((item) => item.value), 10);
-
-  const toggleSelected = (id) => {
-    setSelectedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
   };
 
-  const exportRows = () => {
-    const rows = selectedRows.length ? selectedRows : filteredPDFs;
-    if (!rows.length) {
-      toast.error("No documents to export");
-      return;
-    }
-
-    const csv = [
-      ["Title", "Subject", "Topics", "Uploaded"],
-      ...rows.map((pdf) => [
-        pdf.detectedTitle || pdf.title,
-        pdf.subject || "General",
-        (pdf.keyTopics || []).join("; "),
-        formatDate(pdf.createdAt),
-      ]),
-    ].map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(",")).join("\n");
-
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = "study-documents.csv";
-    anchor.click();
-    URL.revokeObjectURL(url);
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full min-h-[400px]">
+        <div className="w-12 h-12 border-4 border-indigo-100 border-t-primary rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-
-      <header className="flex flex-col gap-4 border-b border-gray-100 pb-5 lg:flex-row lg:items-center lg:justify-between">
+    <div className="space-y-gutter text-left">
+      {/* Header and Welcome Panel */}
+      <header className="flex flex-col gap-4 pb-5 lg:flex-row lg:items-center lg:justify-between border-b border-slate-200/50">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-gray-950">Study Analytics</h1>
+          <h1 className="font-display-lg text-[28px] font-bold text-on-surface flex items-center gap-2">
+            Welcome back, {profile?.name || "Student"}!
+          </h1>
+          <p className="font-body-md text-on-surface-variant leading-relaxed">
+            Your AI Study Companion workspace is primed for today's learning objectives.
+          </p>
         </div>
+
         <div className="flex flex-wrap gap-2">
-          <button className="toolbar-button" onClick={() => toast.success("Local model is ready")}>
-            <Sparkles size={16} />
-            Model Status
-          </button>
-          <Link to="/pdf" className="btn-primary">
-            <Upload size={16} />
-            Upload PDF
+          <Link to="/pdf" className="clay-button bg-primary hover:bg-primary-container text-white px-6 py-3 rounded-xl font-semibold text-sm flex items-center gap-2 cursor-pointer shadow-md transition-all active:scale-95">
+            <span className="material-symbols-outlined text-[18px]">add</span>
+            <span>Add Study Materials</span>
           </Link>
         </div>
       </header>
 
-      <div className="flex flex-wrap gap-2">
-        {tabs.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
-              activeTab === tab ? "border-gray-900 bg-white text-gray-950 shadow-sm" : "border-gray-200 bg-gray-50 text-gray-500 hover:bg-white"
-            }`}
+      {/* Gamification and Stats Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Scholar Level Progress Card */}
+        <div className="clay-card p-6 bg-white border border-white/40 flex flex-col justify-between h-48 transition-all hover:-translate-y-1">
+          <div className="absolute top-4 right-4 text-primary opacity-10 pointer-events-none">
+            <span className="material-symbols-outlined text-[72px]">workspace_premium</span>
+          </div>
+          <div>
+            <span className="text-[10px] font-bold text-outline uppercase tracking-widest block">Scholar Level</span>
+            <h2 className="font-headline-lg text-[22px] text-on-surface mt-1">Level {level} Scholar</h2>
+            
+            <div className="mt-4 flex items-center justify-between text-[11px] font-semibold text-on-surface-variant">
+              <span>{totalXP} XP</span>
+              <span>Next level at {nextLevelXP} XP</span>
+            </div>
+            <div className="mt-2 w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-primary h-full rounded-full transition-all duration-500"
+                style={{ width: `${levelProgress}%` }}
+              />
+            </div>
+          </div>
+          <p className="text-[10px] text-outline leading-tight mt-3">Complete study tasks, roadmaps, and quizzes to earn more XP.</p>
+        </div>
+
+        {/* Study Streak Card */}
+        <div className="clay-card p-6 bg-white border border-white/40 flex flex-col justify-between h-48 transition-all hover:-translate-y-1">
+          <div className="absolute top-4 right-4 text-orange-500 opacity-10 pointer-events-none">
+            <span className="material-symbols-outlined text-[72px]">bolt</span>
+          </div>
+          <div>
+            <span className="text-[10px] font-bold text-outline uppercase tracking-widest block">Daily Streak</span>
+            <div className="flex items-center gap-2 mt-1">
+              <h2 className="font-headline-lg text-[32px] text-on-surface font-extrabold">{streak} Days</h2>
+              <span className="material-symbols-outlined text-orange-500 text-[28px] animate-pulse" style={{ fontVariationSettings: "'FILL' 1" }}>bolt</span>
+            </div>
+            <p className="text-[12px] text-on-surface-variant mt-2 leading-relaxed">
+              Maintain your streak by studying or completing interactive reviews daily!
+            </p>
+          </div>
+          <span className="text-[10px] text-teal-600 font-bold tracking-wider uppercase">Streak Active</span>
+        </div>
+
+        {/* Workspace Overview Card */}
+        <div className="clay-card p-6 bg-gradient-to-br from-primary to-primary-container text-white flex flex-col justify-between h-48 transition-all hover:-translate-y-1 border border-primary/20">
+          <div>
+            <span className="text-[10px] font-bold text-primary-fixed uppercase tracking-widest block">Workspace Overview</span>
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              <div>
+                <span className="text-3xl font-black block">{pdfs.length}</span>
+                <p className="text-[9px] text-primary-fixed font-bold uppercase mt-1">Documents</p>
+              </div>
+              <div>
+                <span className="text-3xl font-black block">
+                  {weakness?.weakTopics?.length || 0}
+                </span>
+                <p className="text-[9px] text-primary-fixed font-bold uppercase mt-1">Weak Concepts</p>
+              </div>
+            </div>
+          </div>
+          <Link
+            to="/analytics"
+            className="text-[11px] font-bold text-tertiary-fixed hover:text-white flex items-center gap-1.5 transition-colors group"
           >
-            {tab}
-          </button>
-        ))}
+            <span>Open Performance Analytics</span>
+            <span className="material-symbols-outlined text-[14px] transition-transform group-hover:translate-x-1">arrow_forward</span>
+          </Link>
+        </div>
       </div>
 
-      <div>
-        <>
-          {(activeTab === "Productivity" || activeTab === "AI Reports") && (
-            <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <MetricCard label="Documents Studied" value={pdfs.length} detail="Uploaded PDFs" trend={`+${Math.max(pdfs.length, 1) * 6}%`} tone="blue" />
-              <MetricCard label="AI Topics Found" value={totalTopics || "-"} detail="Across documents" trend="+12.4%" tone="teal" />
-              <MetricCard label="Notes Created" value={notes.length} detail="Study notes" trend={notes.length ? "+8.3%" : "0%"} tone="amber" />
-              <MetricCard label="Review Risk" value={pdfs.length > notes.length ? "Medium" : "Low"} detail="Based on notes coverage" trend={pdfs.length > notes.length ? "-3.2%" : "+4.1%"} tone="rose" />
-            </section>
-          )}
+      {/* Main Grid: Today's Tasks & Recent Materials */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        {/* Today's study planner schedule */}
+        <div className="xl:col-span-2 space-y-6">
+          <div className="clay-card p-6 bg-white border border-white/40">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+              <h2 className="text-base font-bold text-on-surface flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary text-[20px]">calendar_today</span>
+                <span>Today's Study Targets</span>
+              </h2>
+              <Link to="/planner" className="text-xs font-bold text-primary hover:underline">
+                Manage Plan
+              </Link>
+            </div>
 
-          {activeTab === "Productivity" && (
-            <section className="grid grid-cols-1 gap-4">
-              <div className="dash-card">
-                <div className="mb-5 flex items-start justify-between">
-                  <div>
-                    <h2 className="text-base font-semibold text-gray-950">Weekly Study Productivity</h2>
-                    <p className="text-sm text-gray-500">Activity estimate from your uploaded study materials</p>
-                  </div>
-                  <span className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-500">Weekly</span>
-                </div>
-                {pdfs.length === 0 ? (
-                  <div className="flex h-48 items-center justify-center rounded-lg border border-gray-100 bg-gray-50 text-gray-400 text-sm">
-                    No activity data available. Upload a document to start.
-                  </div>
-                ) : (
-                  <>
-                    <div className="mb-5 flex items-end gap-3">
-                      <span className="text-4xl font-semibold tracking-tight text-gray-950">{chartData.reduce((sum, item) => sum + item.value, 0)}</span>
-                      <span className="pb-2 text-sm text-gray-500">study actions</span>
-                    </div>
-                    <div className="flex h-48 items-end gap-5 rounded-lg border border-gray-100 bg-gradient-to-b from-white to-gray-50 px-8 py-6">
-                      {chartData.map((item) => (
-                        <button
-                          key={item.day}
-                          type="button"
-                          onClick={() => toast.success(`${item.day}: ${item.value} study actions`)}
-                          className="group flex h-full flex-1 flex-col items-center justify-end gap-3"
-                        >
-                          <span
-                            className="w-full max-w-10 rounded-t-lg bg-gradient-to-b from-sky-400 to-blue-600 shadow-sm transition-transform group-hover:scale-x-110"
-                            style={{ height: `${(item.value / maxChart) * 100}%` }}
-                          />
-                          <span className="text-xs font-medium text-gray-500">{item.day}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
+            {todayTasks.length === 0 ? (
+              <div className="text-center py-10 text-outline text-sm font-medium">
+                No tasks scheduled for today. Set up a study plan in the calendar tab!
               </div>
-            </section>
-          )}
+            ) : (
+              <div className="space-y-3">
+                {todayTasks.map((item) => (
+                  <div
+                    key={item.taskKey}
+                    className="flex items-center justify-between p-3.5 border border-slate-100/70 rounded-xl hover:bg-slate-50/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => handleToggleTask(item.taskKey)}
+                        className={`text-lg transition-colors cursor-pointer flex items-center justify-center ${
+                          item.completed ? "text-green-500" : "text-slate-300 hover:text-primary"
+                        }`}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontVariationSettings: item.completed ? "'FILL' 1" : "'FILL' 0" }}>
+                          {item.completed ? "check_circle" : "radio_button_unchecked"}
+                        </span>
+                      </button>
+                      <div>
+                        <span className="text-[9px] font-bold bg-blue-50 text-primary px-2 py-0.5 rounded uppercase">
+                          {item.subject}
+                        </span>
+                        <h4 className={`text-sm font-bold text-on-surface mt-1 transition-all ${item.completed ? "line-through text-outline font-normal" : ""}`}>
+                          {item.topic}
+                        </h4>
+                      </div>
+                    </div>
+                    <span className="text-xs text-on-surface-variant font-medium truncate max-w-[180px]">
+                      {item.task}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
-          {activeTab === "AI Reports" && (
-            <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-              <div className="dash-card p-10 flex flex-col items-center justify-center text-center h-full min-h-[300px]">
-                 <Sparkles size={40} className="text-indigo-400 mb-4" />
-                 <h3 className="text-lg font-bold">AI Insights Generation</h3>
-                 <p className="text-gray-500 mt-2">Select a document from your library to generate a comprehensive AI report.</p>
-                 <button className="btn-primary mt-6" onClick={() => setActiveTab("Documents")}>Browse Documents</button>
+          {/* Recent study PDF items */}
+          <div className="clay-card p-6 bg-white border border-white/40">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+              <h2 className="text-base font-bold text-on-surface flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary text-[20px]">folder</span>
+                <span>Recent Workspace Materials</span>
+              </h2>
+              <Link to="/pdf" className="text-xs font-bold text-primary hover:underline">
+                View All
+              </Link>
+            </div>
+
+            {pdfs.length === 0 ? (
+              <div className="text-center py-10 text-outline text-sm font-medium">
+                No study documents uploaded yet. Go to Documents to upload your PDFs.
               </div>
-              <div className="dash-card">
-                <div className="mb-5 flex items-start justify-between">
-                  <div>
-                    <h2 className="text-base font-semibold text-gray-950">Knowledge Distribution</h2>
-                    <p className="text-sm text-gray-500">Subject segmentation across PDFs</p>
-                  </div>
-                  <span className="text-2xl font-semibold text-gray-950">{pdfs.length}</span>
-                </div>
-                <div className="space-y-3">
-                  {subjectCounts.map(([subject, count], index) => (
-                    <button
-                      key={subject}
-                      onClick={() => setSubjectFilter(subject)}
-                      className="flex w-full items-center justify-between rounded-lg bg-gray-50 px-4 py-3 text-left text-sm hover:bg-gray-100"
-                    >
-                      <span className="flex items-center gap-2 text-gray-600">
-                        <span className={`h-2 w-2 rounded-full ${index === 0 ? "bg-teal-400" : index === 1 ? "bg-blue-500" : "bg-sky-400"}`} />
-                        {subject}
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {pdfs.slice(0, 4).map((pdf) => (
+                  <div
+                    key={pdf._id}
+                    className="p-4 border border-slate-100 hover:border-slate-200/80 rounded-xl bg-slate-50/30 hover:bg-slate-50/70 transition-colors flex flex-col justify-between h-36"
+                  >
+                    <div>
+                      <h4 className="font-bold text-sm text-on-surface truncate">
+                        {pdf.detectedTitle || pdf.title}
+                      </h4>
+                      <p className="text-xs text-on-surface-variant truncate mt-1">
+                        {pdf.description || "General study material"}
+                      </p>
+                    </div>
+
+                    <div className="flex justify-between items-center mt-4 border-t border-slate-100 pt-2.5">
+                      <span className="text-[9px] bg-teal-50 text-teal-700 font-bold px-2 py-0.5 rounded uppercase">
+                        {pdf.subject || "General"}
                       </span>
-                      <span className="font-semibold text-gray-900">{count}</span>
-                    </button>
-                  ))}
-                </div>
+                      <button
+                        onClick={() => navigate(`/study/${pdf._id}`)}
+                        className="text-xs font-bold text-primary hover:underline cursor-pointer"
+                      >
+                        Enter Workspace
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </section>
-          )}
+            )}
+          </div>
+        </div>
 
-          {activeTab === "Study Queue" && (
-            <div className="dash-card p-16 flex flex-col items-center justify-center text-center border-dashed">
-              <BookOpen size={48} className="text-gray-300 mb-4" />
-              <h3 className="text-xl font-bold text-gray-900">Your queue is clear</h3>
-              <p className="text-gray-500 mt-2">You have completed all scheduled flashcards and quizzes for today.</p>
-              <button className="btn-primary mt-6" onClick={() => setActiveTab("Documents")}>Study Something New</button>
-            </div>
-          )}
+        {/* AI Recommendations and Achievements sidebar */}
+        <div className="xl:col-span-1 space-y-6">
+          {/* AI Advisor insights */}
+          <div className="clay-card p-6 bg-white border border-white/40">
+            <h3 className="text-sm font-bold text-on-surface border-b border-slate-100 pb-4 mb-4 flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary text-[18px]">auto_awesome</span>
+              <span>AI Advisor Tips</span>
+            </h3>
 
-          {activeTab === "Documents" && (
-            pdfs.length === 0 ? <EmptyState /> :
-            <section className="dash-card overflow-hidden p-0">
-              <div className="flex flex-col gap-4 border-b border-gray-100 p-5 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <h2 className="text-base font-semibold text-gray-950">Document Performance Overview</h2>
-                <p className="text-sm text-gray-500">{filteredPDFs.length} result{filteredPDFs.length === 1 ? "" : "s"} in your current view</p>
+            {weakness?.recommendations && weakness.recommendations.length > 0 ? (
+              <div className="space-y-4">
+                {weakness.recommendations.slice(0, 2).map((rec, index) => (
+                  <div key={index} className="p-3 border border-blue-50 bg-blue-50/20 rounded-xl space-y-1 text-left">
+                    <span className="text-[9px] font-bold uppercase tracking-wide text-primary">
+                      Revise: {rec.topic}
+                    </span>
+                    <p className="text-xs text-[#0a2540] leading-relaxed font-semibold">
+                      {rec.text}
+                    </p>
+                  </div>
+                ))}
               </div>
-              <div className="flex flex-wrap gap-2">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                  <input
-                    className="h-10 w-64 rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-blue-500"
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Search PDFs, topics..."
-                  />
-                </div>
-                <select className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm" value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)}>
-                  {subjects.map((subject) => <option key={subject}>{subject}</option>)}
-                </select>
-                <button className="toolbar-button" onClick={() => setSortKey(sortKey === "recent" ? "title" : sortKey === "title" ? "subject" : "recent")}>
-                  <ArrowUpDown size={16} />
-                  Sort
-                </button>
-                <button className="toolbar-button" onClick={() => setSubjectFilter("All")}>
-                  <Filter size={16} />
-                  Reset
-                </button>
-                <button className="btn-primary" onClick={exportRows}>
-                  <Download size={16} />
-                  Export
-                </button>
+            ) : (
+              <p className="text-xs text-on-surface-variant leading-relaxed">
+                You are currently performing optimally! Keep completing daily checklist tasks to build your XP.
+              </p>
+            )}
+          </div>
+
+          {/* Badges / Achievements list */}
+          <div className="clay-card p-6 bg-white border border-white/40">
+            <h3 className="text-sm font-bold text-on-surface border-b border-slate-100 pb-4 mb-4 flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary text-[18px]">workspace_premium</span>
+              <span>Recent Achievements</span>
+            </h3>
+
+            {profile?.achievements && profile.achievements.length > 0 ? (
+              <div className="grid grid-cols-2 gap-3">
+                {profile.achievements.slice(0, 4).map((ach) => (
+                  <div
+                    key={ach.id}
+                    className="p-3 border border-slate-100 rounded-xl bg-slate-50/40 text-center flex flex-col justify-center items-center h-24"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center border border-amber-200 shadow-sm mb-1.5">
+                      <span className="material-symbols-outlined text-[16px]">workspace_premium</span>
+                    </div>
+                    <span className="font-bold text-[10px] text-on-surface block truncate w-full">
+                      {ach.title}
+                    </span>
+                    <span className="text-[8px] text-outline mt-0.5 line-clamp-2 leading-relaxed">
+                      {ach.description}
+                    </span>
+                  </div>
+                ))}
               </div>
-            </div>
-
-            <div className="flex items-center gap-2 border-b border-gray-100 bg-gray-50 px-5 py-3 text-sm">
-              <span className="inline-flex items-center gap-2 rounded-lg border border-blue-100 bg-white px-3 py-1.5 text-blue-700">
-                <Check size={14} />
-                {selectedIds.length} selected
-              </span>
-              <button className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-gray-600" onClick={() => setSelectedIds([])}>Clear</button>
-              <span className="text-blue-600">{filteredPDFs.length} result</span>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[920px] text-left text-sm">
-                <thead className="border-b border-gray-100 text-xs font-semibold uppercase text-gray-500">
-                  <tr>
-                    <th className="w-12 px-5 py-3"></th>
-                    <th className="px-5 py-3">Document Name</th>
-                    <th className="px-5 py-3">Subject</th>
-                    <th className="px-5 py-3">Topics</th>
-                    <th className="px-5 py-3">AI Tools</th>
-                    <th className="px-5 py-3">Uploaded</th>
-                    <th className="px-5 py-3">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {filteredPDFs.map((pdf, index) => (
-                    <motion.tr key={pdf._id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="hover:bg-gray-50">
-                      <td className="px-5 py-4">
-                        <input type="checkbox" checked={selectedIds.includes(pdf._id)} onChange={() => toggleSelected(pdf._id)} />
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="font-semibold text-gray-900">{pdf.detectedTitle || pdf.title}</div>
-                        <div className="mt-1 max-w-xs truncate text-xs text-gray-500">{pdf.description || pdf.title}</div>
-                      </td>
-                      <td className="px-5 py-4">
-                        <span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700">{getSubject(pdf, index)}</span>
-                      </td>
-                      <td className="px-5 py-4 text-gray-600">{pdf.keyTopics?.length || 0}</td>
-                      <td className="px-5 py-4">
-                        <div className="flex gap-1">
-                          <button className="icon-pill" onClick={() => navigate(`/study/${pdf._id}`)} title="Summary"><Sparkles size={14} /></button>
-                          <button className="icon-pill" onClick={() => navigate(`/study/${pdf._id}?tab=chat`)} title="Chat"><MessageSquare size={14} /></button>
-                          <button className="icon-pill" onClick={() => navigate(`/study/${pdf._id}?tab=flashcards`)} title="Flashcards"><BookOpen size={14} /></button>
-                          <button className="icon-pill" onClick={() => navigate(`/study/${pdf._id}?tab=quiz`)} title="Quiz"><BrainCircuit size={14} /></button>
-                        </div>
-                      </td>
-                      <td className="px-5 py-4 text-gray-500">{formatDate(pdf.createdAt)}</td>
-                      <td className="px-5 py-4">
-                        <button className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700" onClick={() => navigate(`/study/${pdf._id}`)}>
-                          Study
-                        </button>
-                      </td>
-                    </motion.tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            </section>
-          )}
-        </>
+            ) : (
+              <p className="text-xs text-outline leading-relaxed text-center py-6">
+                No badges unlocked yet. Start quiz audits to unlock rewards.
+              </p>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

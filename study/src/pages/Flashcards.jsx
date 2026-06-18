@@ -23,14 +23,18 @@ const Flashcards = () => {
     fetchPDFs();
   }, [fetchPDFs]);
 
-  const generateFlashcards = async (id) => {
+  const generateFlashcards = async (id, refresh = false) => {
     setSelectedPdfId(id);
     setLoading(true);
     setCurrentIndex(0);
     setIsFlipped(false);
     try {
-      const { data } = await API.get(`/flashcards/${id}`);
+      const url = refresh ? `/flashcards/${id}?refresh=true` : `/flashcards/${id}`;
+      const { data } = await API.get(url);
       setFlashcards(data);
+      if (refresh) {
+        toast.success("Regenerated 10 completely new flashcards!");
+      }
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to generate flashcards");
     } finally {
@@ -100,8 +104,8 @@ const Flashcards = () => {
                    Card {currentIndex + 1} / {flashcards.length}
                  </span>
                  <button 
-                   onClick={() => generateFlashcards(selectedPdfId)}
-                   className="text-gray-400 hover:text-indigo-600 transition-colors"
+                   onClick={() => generateFlashcards(selectedPdfId, true)}
+                   className="text-gray-400 hover:text-indigo-600 transition-colors cursor-pointer"
                    title="Regenerate"
                  >
                    <RotateCcw size={18} />
