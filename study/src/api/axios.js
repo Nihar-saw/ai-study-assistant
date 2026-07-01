@@ -1,15 +1,8 @@
 import axios from "axios";
-
-const getBaseURL = () => {
-  let url = import.meta.env.VITE_API_BASE_URL || "";
-  if (url && !url.endsWith("/api") && !url.endsWith("/api/")) {
-    url = url.endsWith("/") ? `${url}api` : `${url}/api`;
-  }
-  return url;
-};
-
-const API = axios.create({
-  baseURL: getBaseURL(),
+const res = await api.post("/api/auth/login", data);
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL,
+  withCredentials: true,
 });
 
 API.interceptors.request.use((config) => {
